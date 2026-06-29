@@ -27,6 +27,15 @@ aside{width:220px;min-width:220px;min-height:100vh;background:linear-gradient(16
 #fileInput{display:none}
 .upload-hint{font-size:9px;color:rgba(255,255,255,0.4);text-align:center;margin-top:6px}
 .upload-status{font-size:10px;color:#00A878;text-align:center;margin-top:6px;min-height:14px;font-weight:600}
+.csv-source-badge{font-size:9px;color:rgba(255,255,255,0.55);text-align:center;margin-top:8px;background:rgba(255,255,255,0.08);border-radius:6px;padding:5px 6px;line-height:1.4}
+
+/* LOADING OVERLAY */
+#loadingOverlay{position:fixed;inset:0;background:rgba(0,58,114,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:16px}
+#loadingOverlay.hidden{display:none}
+.loading-spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:#fff;font-size:14px;font-weight:600}
+.loading-sub{color:rgba(255,255,255,0.6);font-size:11px}
 
 /* MAIN */
 main{flex:1;padding:0 0 32px;min-width:0}
@@ -69,16 +78,14 @@ header{background:linear-gradient(90deg,#003A72 0%,#005BAC 60%,#0080D7 100%);pad
 .grid-4-custom{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:16px;margin-bottom:22px}
 .grid-bottom{display:grid;grid-template-columns:1.3fr 1fr 1.1fr;gap:16px}
 
-/* CHARTS */
 canvas{width:100%!important}
 
-/* FUNNEL - Enhanced vertical step funnel */
+/* FUNNEL */
 .funnel-wrap{display:flex;flex-direction:column;gap:4px;padding:4px 0}
 .funnel-step{position:relative;margin-bottom:3px}
 .funnel-step-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 .funnel-step-name{font-size:10px;font-weight:700;color:#1A2845;display:flex;align-items:center;gap:5px}
 .funnel-step-num{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0}
-.funnel-step-val{font-size:11px;font-weight:800}
 .funnel-bar-bg{background:#E4EAF2;border-radius:6px;height:22px;overflow:hidden;position:relative}
 .funnel-bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:10px;transition:width 0.6s ease}
 .funnel-bar-pct{color:rgba(255,255,255,0.95);font-size:9px;font-weight:700}
@@ -113,7 +120,7 @@ tr:hover td{background:#E8F1FB!important}
 .model-cpl{background:#E6F9F4;color:#00A878;border:1px solid rgba(0,168,120,0.2)}
 .model-both{background:#F5F0FF;color:#7C3AED;border:1px solid rgba(124,58,237,0.2)}
 
-/* PARTNER MODELS CARDS */
+/* PARTNER MODELS */
 .models-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
 .model-card{border-radius:12px;padding:14px;border:1.5px solid}
 .model-card-cpa{background:linear-gradient(135deg,#EBF3FF 0%,#D6E8FF 100%);border-color:rgba(0,91,172,0.25)}
@@ -133,14 +140,13 @@ tr:hover td{background:#E8F1FB!important}
 .insight-text{margin:0;font-size:10.5px;color:#1A2845;line-height:1.5;font-weight:500}
 .insights-footer{margin-top:6px;font-size:10px;color:#6B7A99;text-align:center;border-top:1px solid #E4EAF2;padding-top:8px}
 
-/* TREEMAP DIV */
+/* TREEMAP */
 .treemap{display:flex;flex-wrap:wrap;height:220px;gap:2px;overflow:hidden;border-radius:8px}
 .treemap-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:4px;overflow:hidden;cursor:default;transition:opacity .2s}
 .treemap-cell:hover{opacity:.85}
 .treemap-name{color:#fff;font-size:11px;font-weight:700;text-align:center;padding:0 4px}
 .treemap-val{color:rgba(255,255,255,0.8);font-size:9px}
 
-/* FOOTER */
 .dash-footer{margin-top:28px;text-align:center;color:#6B7A99;font-size:10px;border-top:1px solid #E4EAF2;padding-top:16px}
 
 @media(max-width:900px){.grid-3,.grid-4,.grid-4-custom,.grid-bottom{grid-template-columns:1fr 1fr}.kpi-value{font-size:20px}}
@@ -148,6 +154,13 @@ tr:hover td{background:#E8F1FB!important}
 </style>
 </head>
 <body>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Loading Dashboard Data...</div>
+  <div class="loading-sub">Fetching data.csv from GitHub...</div>
+</div>
 
 <!-- SIDEBAR -->
 <aside id="sidebar">
@@ -196,8 +209,9 @@ tr:hover td{background:#E8F1FB!important}
     <div class="upload-area">
       <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📂 Upload Excel / CSV</button>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
-      <div class="upload-hint">Upload your .xlsx or .csv file<br>Dashboard updates instantly</div>
+      <div class="upload-hint">Upload to preview locally.<br>To update for everyone, replace<br>data.csv on GitHub.</div>
       <div class="upload-status" id="uploadStatus"></div>
+      <div class="csv-source-badge" id="csvSourceBadge">📡 Loading from GitHub...</div>
     </div>
   </div>
 </aside>
@@ -223,13 +237,9 @@ tr:hover td{background:#E8F1FB!important}
   </header>
 
   <div class="content">
-    <!-- FILTER CHIPS -->
     <div class="filter-chips" id="filterChips"></div>
-
-    <!-- KPI CARDS -->
     <div class="kpi-grid" id="kpiGrid"></div>
 
-    <!-- ROW 2: TREND CHARTS + FUNNEL -->
     <div class="grid-4" style="margin-bottom:22px">
       <div class="section-card">
         <div class="section-title">Monthly Leads Trend</div>
@@ -249,7 +259,6 @@ tr:hover td{background:#E8F1FB!important}
       </div>
     </div>
 
-    <!-- ROW 3: PARTNER MODELS + STATE + PROGRAM -->
     <div class="grid-4-custom">
       <div class="section-card">
         <div class="section-title">Top 10 Affiliate Partners by Leads</div>
@@ -270,7 +279,6 @@ tr:hover td{background:#E8F1FB!important}
       </div>
     </div>
 
-    <!-- TABLE: Partner Performance -->
     <div class="section-card" style="margin-bottom:22px">
       <div class="section-title">Affiliate Partner Performance Table</div>
       <div class="table-wrap">
@@ -284,7 +292,6 @@ tr:hover td{background:#E8F1FB!important}
       </div>
     </div>
 
-    <!-- ROW 5: BOTTOM -->
     <div class="grid-bottom">
       <div class="section-card">
         <div class="section-title">Monthly Target vs Achievement</div>
@@ -305,11 +312,10 @@ tr:hover td{background:#E8F1FB!important}
 </main>
 
 <script>
-// ── PALETTE
 const C={navy:"#003A72",blue:"#005BAC",skyBlue:"#0080D7",lightB:"#E8F1FB",white:"#FFFFFF",bg:"#F0F4FA",grey1:"#F7F9FC",grey2:"#E4EAF2",grey3:"#B0BDD0",grey4:"#6B7A99",text:"#1A2845",green:"#00A878",amber:"#F5A623",red:"#E53935",purple:"#7C3AED"};
 
-// ── DEFAULT SAMPLE DATA
-let rawData = {
+// ── DEFAULT FALLBACK DATA (shown if data.csv not found)
+const defaultData = {
   monthlyLeads:[
     {month:"Jul",leads:320,apps:210,admissions:130},{month:"Aug",leads:410,apps:270,admissions:165},
     {month:"Sep",leads:530,apps:360,admissions:220},{month:"Oct",leads:480,apps:310,admissions:195},
@@ -331,7 +337,6 @@ let rawData = {
     {name:"B.Com",size:510,color:"#7FC4F0"},{name:"M.Tech",size:420,color:"#A8D8F8"},
     {name:"BCA",size:380,color:"#6B7A99"},{name:"Ph.D",size:210,color:"#B0BDD0"},
   ],
-  // 6-STEP FUNNEL
   funnelData:[
     {name:"Leads",value:7890,fill:"#005BAC",icon:"📋"},
     {name:"OTP Verification",value:6240,fill:"#0072D4",icon:"🔐"},
@@ -390,13 +395,44 @@ let rawData = {
   ]
 };
 
+let rawData = JSON.parse(JSON.stringify(defaultData));
 let charts={};
 let activeFilters={partner:"all",model:"all",program:"all",state:"all",city:"all"};
 
-// ── INIT
-function init(){
-  document.getElementById('refreshedTime').textContent=new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
-  renderAll();
+// ══════════════════════════════════════════
+// AUTO-LOAD data.csv FROM GITHUB
+// ══════════════════════════════════════════
+async function loadCSVFromGitHub(){
+  // This fetches data.csv from the same folder as index.html on GitHub Pages
+  const csvUrl = 'data.csv?nocache=' + Date.now();
+  try {
+    const res = await fetch(csvUrl);
+    if(!res.ok) throw new Error('data.csv not found (HTTP ' + res.status + ')');
+    const text = await res.text();
+    if(!text || text.trim().length === 0) throw new Error('data.csv is empty');
+
+    // Parse CSV using XLSX library
+    const wb = XLSX.read(text, {type:'string'});
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
+    if(!rows.length) throw new Error('No rows found in data.csv');
+
+    ingestData(rows, 'data.csv');
+    document.getElementById('csvSourceBadge').textContent = '✅ Live data from GitHub (data.csv)';
+    document.getElementById('csvSourceBadge').style.color = '#00A878';
+    console.log('✅ data.csv loaded from GitHub: ' + rows.length + ' rows');
+  } catch(err) {
+    // If data.csv not found, use default sample data silently
+    console.warn('data.csv not loaded — using sample data. Reason: ' + err.message);
+    document.getElementById('csvSourceBadge').textContent = '📊 Showing sample data (upload data.csv to GitHub to update)';
+    document.getElementById('csvSourceBadge').style.color = 'rgba(255,255,255,0.5)';
+    rawData = JSON.parse(JSON.stringify(defaultData));
+    populateFilterSelects();
+    renderFilterChips();
+    renderAll();
+  } finally {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    document.getElementById('refreshedTime').textContent = new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+  }
 }
 
 function toggleSidebar(){
@@ -404,7 +440,6 @@ function toggleSidebar(){
   s.style.display=s.style.display==='none'?'flex':'none';
 }
 
-// ── FILTER SELECTS from data
 function populateFilterSelects(){
   const td=rawData.tableData;
   const partners=[...new Set(td.map(r=>r.partner))].sort();
@@ -445,7 +480,6 @@ function renderFilterChips(){
   document.getElementById('filterChips').innerHTML=chips.join('');
 }
 
-// ── RENDER ALL
 function renderAll(){
   renderKPIs();
   renderLeadsChart();
@@ -462,7 +496,6 @@ function renderAll(){
   renderInsights();
 }
 
-// ── KPI CARDS
 function renderKPIs(){
   document.getElementById('kpiGrid').innerHTML=rawData.kpis.map(k=>`
     <div class="kpi-card">
@@ -481,7 +514,6 @@ function renderKPIs(){
     </div>`).join('');
 }
 
-// ── CHART HELPERS
 function mkChart(id,cfg){
   if(charts[id])charts[id].destroy();
   const ctx=document.getElementById(id).getContext('2d');
@@ -490,25 +522,21 @@ function mkChart(id,cfg){
 
 const ttPlugin={plugins:{tooltip:{backgroundColor:'rgba(255,255,255,0.97)',titleColor:C.navy,bodyColor:C.text,borderColor:C.grey2,borderWidth:1,cornerRadius:10,padding:10},legend:{labels:{font:{size:10}}}}};
 
-// ── LEADS TREND
 function renderLeadsChart(){
   const d=rawData.monthlyLeads;
   mkChart('chartLeads',{type:'line',data:{labels:d.map(r=>r.month),datasets:[{label:'Leads',data:d.map(r=>r.leads),borderColor:C.blue,backgroundColor:'rgba(0,91,172,0.08)',borderWidth:2.5,pointRadius:3,pointBackgroundColor:C.blue,fill:true,tension:0.4}]},options:{responsive:true,scales:{x:{ticks:{font:{size:10},color:C.grey4},grid:{color:C.grey2}},y:{ticks:{font:{size:10},color:C.grey4},grid:{color:C.grey2},beginAtZero:true}},...ttPlugin}});
 }
 
-// ── APPS vs ADMISSIONS
 function renderAppsAdmChart(){
   const d=rawData.monthlyLeads.slice(-6);
   mkChart('chartAppsAdm',{type:'bar',data:{labels:d.map(r=>r.month),datasets:[{label:'Applications',data:d.map(r=>r.apps),backgroundColor:C.blue,borderRadius:4},{label:'Admissions',data:d.map(r=>r.admissions),backgroundColor:C.green,borderRadius:4}]},options:{responsive:true,scales:{x:{ticks:{font:{size:10},color:C.grey4},grid:{color:C.grey2}},y:{ticks:{font:{size:10},color:C.grey4},grid:{color:C.grey2},beginAtZero:true}},...ttPlugin}});
 }
 
-// ── REVENUE
 function renderRevenueChart(){
   const d=rawData.monthlyLeads.map(r=>({month:r.month,revenue:Math.round(r.admissions*87500/1000)}));
   mkChart('chartRevenue',{type:'line',data:{labels:d.map(r=>r.month),datasets:[{label:'Revenue (₹L)',data:d.map(r=>r.revenue),borderColor:C.blue,backgroundColor:'rgba(0,91,172,0.12)',borderWidth:2.5,pointRadius:3,fill:true,tension:0.4}]},options:{responsive:true,scales:{x:{ticks:{font:{size:10},color:C.grey4},grid:{color:C.grey2}},y:{ticks:{font:{size:10},color:C.grey4},grid:{color:C.grey2},beginAtZero:true}},...ttPlugin}});
 }
 
-// ── 6-STEP FUNNEL
 function renderFunnel(){
   const fd=rawData.funnelData;
   const max=fd[0].value;
@@ -538,13 +566,11 @@ function renderFunnel(){
   document.getElementById('funnelViz').innerHTML=html;
 }
 
-// ── PARTNERS CHART (by leads)
 function renderPartnersChart(){
   const d=[...rawData.topPartners].reverse();
   mkChart('chartPartners',{type:'bar',data:{labels:d.map(r=>r.name),datasets:[{label:'Leads',data:d.map(r=>r.leads),backgroundColor:C.blue,borderRadius:6}]},options:{indexAxis:'y',responsive:true,scales:{x:{ticks:{font:{size:10},color:C.grey4},grid:{color:C.grey2},beginAtZero:true},y:{ticks:{font:{size:9},color:C.text}}},...ttPlugin,plugins:{...ttPlugin.plugins,legend:{display:false}}}});
 }
 
-// ── STATE VIZ
 function renderStateViz(){
   const blues=["#003A72","#005BAC","#0072D4","#0080D7","#3399E0","#5BADE8","#7FC4F0","#A0D4F7","#BFDFFA","#D6EDFC"];
   const sl=rawData.stateLeads;
@@ -557,7 +583,6 @@ function renderStateViz(){
   }).join('')+'</div>';
 }
 
-// ── TREEMAP
 function renderTreemap(){
   const pd=rawData.programData;
   const total=pd.reduce((a,d)=>a+d.size,0);
@@ -571,7 +596,6 @@ function renderTreemap(){
   }).join('');
 }
 
-// ── PARTNER MODELS (CPA / CPL)
 function renderPartnerModels(){
   const m=rawData.partnerModels;
   document.getElementById('partnerModelsViz').innerHTML=`
@@ -595,11 +619,9 @@ function renderPartnerModels(){
         </div>
       </div>
     </div>`;
-
   mkChart('chartModels',{type:'doughnut',data:{labels:['CPA Only','CPL Only','Both Models'],datasets:[{data:[m.cpa.partners,m.cpl.partners,m.both.partners],backgroundColor:['#005BAC','#00A878','#7C3AED'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,cutout:'55%',...ttPlugin,plugins:{...ttPlugin.plugins,legend:{position:'bottom',labels:{font:{size:10},padding:8}}}}});
 }
 
-// ── TABLE
 function renderTable(){
   const filtered=rawData.tableData.filter(r=>{
     if(activeFilters.partner!=='all'&&r.partner!==activeFilters.partner)return false;
@@ -627,24 +649,18 @@ function renderTable(){
   }).join('');
 }
 
-// ── TARGET CHART
 function renderTargetChart(){
   const d=rawData.targetData;
   mkChart('chartTarget',{type:'bar',data:{labels:d.map(r=>r.month),datasets:[{label:'Target',data:d.map(r=>r.target),backgroundColor:C.grey3,borderRadius:4},{label:'Achieved',data:d.map(r=>r.achieved),backgroundColor:C.green,borderRadius:4}]},options:{responsive:true,scales:{x:{ticks:{font:{size:10},color:C.grey4},grid:{color:C.grey2}},y:{ticks:{font:{size:10},color:C.grey4},grid:{color:C.grey2},beginAtZero:true}},...ttPlugin}});
 }
 
-// ── TOP PARTNERS BY APPLICATIONS (new chart)
 function renderTopAppChart(){
   const d=[...rawData.topPartners].sort((a,b)=>b.apps-a.apps).slice(0,8).reverse();
   mkChart('chartTopApps',{type:'bar',data:{labels:d.map(r=>r.name),datasets:[{label:'Applications',data:d.map(r=>r.apps),backgroundColor:C.skyBlue,borderRadius:6}]},options:{indexAxis:'y',responsive:true,scales:{x:{ticks:{font:{size:10},color:C.grey4},grid:{color:C.grey2},beginAtZero:true},y:{ticks:{font:{size:9},color:C.text}}},...ttPlugin,plugins:{...ttPlugin.plugins,legend:{display:false}}}});
 }
 
-// ── INSIGHTS (auto-generated from data)
 function renderInsights(){
-  // Auto-generate insights from actual data
   const generatedInsights = [...rawData.insights];
-
-  // Add dynamic insights based on funnel data
   if(rawData.funnelData && rawData.funnelData.length >= 2){
     const otpDrop = Math.round((1 - rawData.funnelData[1].value / rawData.funnelData[0].value)*100);
     if(otpDrop > 15){
@@ -655,21 +671,16 @@ function renderInsights(){
     const exists2 = generatedInsights.some(i=>i.text.includes('Overall enrollment'));
     if(!exists2) generatedInsights.push({icon:"📊",text:`Overall enrollment conversion: ${enrollRate}% from leads to enrolled students.`});
   }
-
-  // Add model mix insight
   if(rawData.partnerModels){
     const m = rawData.partnerModels;
     const exists3 = generatedInsights.some(i=>i.text.includes('CPA partners'));
     if(!exists3) generatedInsights.push({icon:"💡",text:`CPA partners (${m.cpa.partners}) generate higher-quality leads at avg ${m.cpa.avgCPA} per admission vs CPL avg ${m.cpl.avgCPL} per lead.`});
   }
-
-  // Add top partner insight from table
   if(rawData.tableData && rawData.tableData.length > 0){
     const top = rawData.tableData.reduce((a,b)=>a.leads>b.leads?a:b);
     const exists4 = generatedInsights.some(i=>i.text.includes(top.partner));
     if(!exists4) generatedInsights.push({icon:"🏆",text:`${top.partner} leads all partners with ${top.leads.toLocaleString()} leads and ${top.conv}% conversion rate.`});
   }
-
   const now=document.getElementById('refreshedTime').textContent;
   document.getElementById('insightsViz').innerHTML=
     generatedInsights.slice(0,7).map(ins=>`
@@ -680,7 +691,7 @@ function renderInsights(){
     `<div class="insights-footer">Insights auto-generated from your data · Refreshed ${now}</div>`;
 }
 
-// ── EXCEL / CSV UPLOAD
+// ── LOCAL FILE UPLOAD (for preview only)
 function handleFile(e){
   const file=e.target.files[0];
   if(!file)return;
@@ -693,6 +704,8 @@ function handleFile(e){
       const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
       if(!rows.length){alert('No data found.');return;}
       ingestData(rows,file.name);
+      document.getElementById('csvSourceBadge').textContent = '⚠️ Local preview only — replace data.csv on GitHub to update for everyone';
+      document.getElementById('csvSourceBadge').style.color = '#F5A623';
     }catch(err){alert('Error reading file: '+err.message);}
   };
   if(file.name.endsWith('.csv'))reader.readAsText(file);
@@ -709,7 +722,6 @@ function col(row,...keys){
 function num(v){return Number(String(v).replace(/[^0-9.]/g,''))||0;}
 
 function ingestData(rows,fname){
-  // Build partner table data
   const tableData=rows.map(r=>({
     partner:col(r,'partner','affiliatename','name')||'Unknown',
     model:(col(r,'model','partnermodel','pricingmodel')||'CPL').toUpperCase(),
@@ -728,7 +740,6 @@ function ingestData(rows,fname){
     city:col(r,'city'),
   }));
 
-  // Rebuild KPIs from data
   const totalLeads=tableData.reduce((a,r)=>a+r.leads,0);
   const totalApps=tableData.reduce((a,r)=>a+r.apps,0);
   const totalAdm=tableData.reduce((a,r)=>a+r.admissions,0);
@@ -736,7 +747,6 @@ function ingestData(rows,fname){
   const l2a=totalLeads?((totalApps/totalLeads)*100).toFixed(1):0;
   const conv=totalLeads?((totalAdm/totalLeads)*100).toFixed(1):0;
 
-  // CPL / CPA averages
   const cplRows=tableData.filter(r=>r.cpl>0);
   const cpaRows=tableData.filter(r=>r.cpa>0);
   const avgCPL=cplRows.length?Math.round(cplRows.reduce((a,r)=>a+r.cpl,0)/cplRows.length):0;
@@ -753,7 +763,6 @@ function ingestData(rows,fname){
     {label:"Avg Cost per Admission (CPA)",value:avgCPA?`₹${avgCPA.toLocaleString()}`:'—',sub:"avg across CPA partners",icon:"🎯",color:C.purple,trend:0},
   ];
 
-  // Partner models breakdown
   const cpaPartners=tableData.filter(r=>r.model==='CPA'||r.model==='BOTH');
   const cplPartners=tableData.filter(r=>r.model==='CPL'||r.model==='BOTH');
   const bothPartners=tableData.filter(r=>r.model==='BOTH');
@@ -763,7 +772,6 @@ function ingestData(rows,fname){
     both:{partners:[...new Set(bothPartners.map(r=>r.partner))].length,totalPayout:'—'}
   };
 
-  // Monthly trend from data
   const byMonth={};
   tableData.forEach(r=>{
     const m=col(r,'month','mon')||'—';
@@ -773,37 +781,30 @@ function ingestData(rows,fname){
   const monthlyFromData=Object.values(byMonth).filter(m=>m.month!=='—');
   if(monthlyFromData.length>1)rawData.monthlyLeads=monthlyFromData;
 
-  // Funnel — rebuild from data (proportional from leads→apps→admissions, intermediate steps estimated)
   if(totalLeads>0){
-    const otpVerified=Math.round(totalLeads*0.791);
-    const comm=Math.round(totalLeads*0.656);
     rawData.funnelData=[
       {name:"Leads",value:totalLeads,fill:"#005BAC",icon:"📋"},
-      {name:"OTP Verification",value:otpVerified,fill:"#0072D4",icon:"🔐"},
-      {name:"Communication",value:comm,fill:"#0080D7",icon:"💬"},
+      {name:"OTP Verification",value:Math.round(totalLeads*0.791),fill:"#0072D4",icon:"🔐"},
+      {name:"Communication",value:Math.round(totalLeads*0.656),fill:"#0080D7",icon:"💬"},
       {name:"Application Filled",value:totalApps,fill:"#3399E0",icon:"📝"},
       {name:"Application Fees Paid",value:Math.round(totalApps*0.76),fill:"#F5A623",icon:"💳"},
       {name:"Enrollment",value:totalAdm,fill:"#00A878",icon:"🎓"},
     ];
   }
 
-  // State leads
   const byState={};
   tableData.forEach(r=>{if(r.state){byState[r.state]=(byState[r.state]||0)+r.leads;}});
   const stateLeads=Object.entries(byState).map(([state,leads])=>({state,leads})).sort((a,b)=>b.leads-a.leads);
   if(stateLeads.length)rawData.stateLeads=stateLeads;
 
-  // Program data
   const byProgram={};
   tableData.forEach(r=>{if(r.program){byProgram[r.program]=(byProgram[r.program]||0)+r.leads;}});
   const pColors=["#005BAC","#0080D7","#003A72","#4DAAE8","#7FC4F0","#A8D8F8","#6B7A99","#B0BDD0"];
   const programData=Object.entries(byProgram).map(([name,size],i)=>({name,size,color:pColors[i%pColors.length]})).sort((a,b)=>b.size-a.size);
   if(programData.length)rawData.programData=programData;
 
-  // Top partners
   rawData.topPartners=tableData.sort((a,b)=>b.leads-a.leads).slice(0,10).map(r=>({name:r.partner,leads:r.leads,apps:r.apps,conv:r.conv}));
 
-  // Auto-generate insights from uploaded data
   rawData.insights=[];
   if(rawData.topPartners.length>0){
     const top=rawData.topPartners[0];
@@ -812,25 +813,18 @@ function ingestData(rows,fname){
   const reviewPartners=tableData.filter(r=>r.status==='review'||r.status==='inactive');
   if(reviewPartners.length>0) rawData.insights.push({icon:"⚠️",text:`${reviewPartners.length} partner(s) flagged for review or inactive — check ${reviewPartners[0].partner}.`});
   if(avgCPL>0&&avgCPA>0) rawData.insights.push({icon:"💡",text:`Avg CPL: ₹${avgCPL.toLocaleString()} | Avg CPA: ₹${avgCPA.toLocaleString()}. Review high-cost partners for ROI.`});
-  const otpDrop=totalLeads>0?Math.round((1-rawData.funnelData[1].value/totalLeads)*100):0;
-  if(otpDrop>10) rawData.insights.push({icon:"🔐",text:`OTP verification drop-off: ${otpDrop}% of leads — consider simplifying verification.`});
   rawData.insights.push({icon:"📊",text:`Lead to enrollment rate: ${conv}% (${totalAdm.toLocaleString()} enrollments from ${totalLeads.toLocaleString()} leads).`});
 
-  // Repopulate filters and re-render
   populateFilterSelects();
   resetFilters();
-
-  const now=new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
-  document.getElementById('refreshedTime').textContent=now;
+  document.getElementById('refreshedTime').textContent=new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
   document.getElementById('uploadStatus').textContent=`✅ ${rows.length} rows loaded from "${fname}"`;
   setTimeout(()=>document.getElementById('uploadStatus').textContent='',6000);
   renderAll();
 }
 
-// ── START
-populateFilterSelects();
-renderFilterChips();
-init();
+// ── START: auto-load CSV from GitHub first
+loadCSVFromGitHub();
 </script>
 </body>
 </html>
