@@ -159,7 +159,7 @@ tr:hover td{background:#E8F1FB!important}
 <div id="loadingOverlay">
   <div class="loading-spinner"></div>
   <div class="loading-text">Loading Dashboard Data...</div>
-  <div class="loading-sub">Fetching data.csv from GitHub...</div>
+  <div class="loading-sub">Fetching live data from Google Sheet...</div>
 </div>
 
 <!-- SIDEBAR -->
@@ -209,7 +209,7 @@ tr:hover td{background:#E8F1FB!important}
     <div class="upload-area">
       <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📂 Upload Excel / CSV</button>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
-      <div class="upload-hint">Upload to preview locally.<br>To update for everyone, replace<br>data.csv on GitHub.</div>
+      <div class="upload-hint">To update data for everyone,<br>just edit your Google Sheet.<br>Dashboard updates automatically!</div>
       <div class="upload-status" id="uploadStatus"></div>
       <div class="csv-source-badge" id="csvSourceBadge">📡 Loading from GitHub...</div>
     </div>
@@ -403,27 +403,27 @@ let activeFilters={partner:"all",model:"all",program:"all",state:"all",city:"all
 // AUTO-LOAD data.csv FROM GITHUB
 // ══════════════════════════════════════════
 async function loadCSVFromGitHub(){
-  // This fetches data.csv from the same folder as index.html on GitHub Pages
-  const csvUrl = 'data.csv?nocache=' + Date.now();
+  // Reads live data from Google Sheets (published as CSV)
+  const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRxXbMNcMOQp29TY4R9tHEPSXnp252N--URAhzLfujciiy5D2i9fnNBh8mlaWgVUvfDDX0yjQfYHGa-/pub?output=csv&nocache=' + Date.now();
   try {
-    const res = await fetch(csvUrl);
-    if(!res.ok) throw new Error('data.csv not found (HTTP ' + res.status + ')');
+    const res = await fetch(SHEET_CSV_URL);
+    if(!res.ok) throw new Error('Google Sheet not reachable (HTTP ' + res.status + ')');
     const text = await res.text();
-    if(!text || text.trim().length === 0) throw new Error('data.csv is empty');
+    if(!text || text.trim().length === 0) throw new Error('Google Sheet is empty');
 
     // Parse CSV using XLSX library
     const wb = XLSX.read(text, {type:'string'});
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
-    if(!rows.length) throw new Error('No rows found in data.csv');
+    if(!rows.length) throw new Error('No rows found in Google Sheet');
 
-    ingestData(rows, 'data.csv');
-    document.getElementById('csvSourceBadge').textContent = '✅ Live data from GitHub (data.csv)';
+    ingestData(rows, 'Google Sheet');
+    document.getElementById('csvSourceBadge').textContent = '✅ Live data from Google Sheet';
     document.getElementById('csvSourceBadge').style.color = '#00A878';
-    console.log('✅ data.csv loaded from GitHub: ' + rows.length + ' rows');
+    console.log('✅ Google Sheet loaded: ' + rows.length + ' rows');
   } catch(err) {
-    // If data.csv not found, use default sample data silently
-    console.warn('data.csv not loaded — using sample data. Reason: ' + err.message);
-    document.getElementById('csvSourceBadge').textContent = '📊 Showing sample data (upload data.csv to GitHub to update)';
+    // If Google Sheet not reachable, use default sample data
+    console.warn('Google Sheet not loaded — using sample data. Reason: ' + err.message);
+    document.getElementById('csvSourceBadge').textContent = '📊 Showing sample data (Google Sheet not reachable)';
     document.getElementById('csvSourceBadge').style.color = 'rgba(255,255,255,0.5)';
     rawData = JSON.parse(JSON.stringify(defaultData));
     populateFilterSelects();
